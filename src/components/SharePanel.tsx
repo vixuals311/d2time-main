@@ -1,0 +1,104 @@
+import { useState, useRef } from "react";
+import { Share2, Link as LinkIcon, FileText, Check } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
+import { toast } from "sonner";
+import { useTimelineStore } from "../lib/store";
+
+export function SharePanel() {
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const selectedDate = useTimelineStore((state) => state.selectedDate);
+
+  const copyLink = () => {
+    const url = new URL(window.location.origin);
+    url.pathname = `/share/${encodeURIComponent(selectedDate)}`;
+    navigator.clipboard.writeText(url.toString());
+    setCopied(true);
+    toast.success("Shareable link copied");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const exportPDF = () => {
+    const toastId = toast.loading("Preparing print view...", {
+      description: "Generating professional tabular layout",
+    });
+    
+    // Close the dialog first so it's not in the print view
+    setOpen(false);
+
+    // Give the browser time to remove the dialog from the DOM
+    setTimeout(() => {
+      // Add tabular print class to body temporarily
+      document.body.classList.add('print-tabular');
+      
+      // Explicitly hide the toast container just before printing as a fallback
+      const toasters = document.querySelectorAll('.sonner-toaster, .toaster');
+      toasters.forEach(t => (t as HTMLElement).style.setProperty('display', 'none', 'important'));
+
+      window.print();
+      
+      // Restore the toaster display
+      toasters.forEach(t => (t as HTMLElement).style.display = '');
+      document.body.classList.remove('print-tabular');
+      
+      toast.dismiss(toastId);
+      toast.success("Schedule exported successfully");
+    }, 1000);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(val) => {
+      setOpen(val);
+      if (val) toast.dismiss("pdf-gen");
+    }}>
+      <DialogTrigger asChild>
+        <button className="flex w-full md:w-auto items-center justify-center gap-2 rounded-2xl bg-white px-4 md:px-5 py-2.5 text-sm font-semibold text-[#4A5568] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] border border-[#EDF2F7] hover:bg-[#F7FAFC] transition-all">
+          <Share2 className="h-4 w-4" /> <span className="md:inline">Share</span>
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Share Timeline</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-6">
+          <button
+            onClick={copyLink}
+            className="flex items-center justify-between w-full rounded-xl border border-[#EDF2F7] p-4 hover:bg-[#F7FAFC] transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-[#EBF8FF] flex items-center justify-center text-[#3182CE]">
+                <LinkIcon className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-[#2D3748]">Copy link</p>
+                <p className="text-xs text-[#718096]">Share a live view of this timeline</p>
+              </div>
+            </div>
+            {copied ? <Check className="h-4 w-4 text-[#38A169]" /> : <div className="h-4 w-4" />}
+          </button>
+
+          <button
+            onClick={exportPDF}
+            className="flex items-center justify-between w-full rounded-xl border border-[#EDF2F7] p-4 hover:bg-[#F7FAFC] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-[#F0FFF4] flex items-center justify-center text-[#38A169]">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-[#2D3748]">Download PDF / Print</p>
+                <p className="text-xs text-[#718096]">Save as a high-quality document</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
